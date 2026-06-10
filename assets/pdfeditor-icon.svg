@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="70" y1="35" x2="440" y2="480" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#377DFF"/>
+      <stop offset="1" stop-color="#1746B2"/>
+    </linearGradient>
+    <linearGradient id="pen" x1="245" y1="410" x2="443" y2="212" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#FFB020"/>
+      <stop offset="1" stop-color="#FF5A47"/>
+    </linearGradient>
+  </defs>
+  <rect x="28" y="28" width="456" height="456" rx="108" fill="url(#bg)"/>
+  <path d="M145 92h154l86 86v224c0 25-20 45-45 45H145c-25 0-45-20-45-45V137c0-25 20-45 45-45Z" fill="#fff"/>
+  <path d="M299 92v66c0 22 18 40 40 40h46" fill="#DDE9FF"/>
+  <path d="M299 92v66c0 22 18 40 40 40h46" fill="none" stroke="#B7CDF8" stroke-width="14" stroke-linejoin="round"/>
+  <rect x="137" y="235" width="205" height="34" rx="17" fill="#D5E3FC"/>
+  <rect x="137" y="294" width="160" height="28" rx="14" fill="#D5E3FC"/>
+  <rect x="137" y="347" width="112" height="28" rx="14" fill="#D5E3FC"/>
+  <path d="m232 407 28-76 139-139c12-12 31-12 43 0l9 9c12 12 12 31 0 43L312 383l-80 24Z" fill="url(#pen)" stroke="#123778" stroke-width="13" stroke-linejoin="round"/>
+  <path d="m260 331 52 52" stroke="#fff" stroke-width="15" stroke-linecap="round" opacity=".82"/>
+  <path d="m232 407 20-55 35 35-55 20Z" fill="#123778"/>
+</svg>
