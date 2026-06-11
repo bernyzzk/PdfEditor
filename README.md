@@ -29,8 +29,9 @@ Application Windows locale en Python, inspirée des éditeurs PDF desktop modern
 - recherche de texte ;
 - redaction manuelle par gomme ou automatique par terme ;
 - OCR local français/anglais des pages scannées ;
-- conversion locale vers Word, Excel et PowerPoint ;
 - déplacement et redimensionnement d'objets texte ou image en mode sélection ;
+- rotation de l'objet sélectionné ;
+- bibliothèque de modèles de signature avec réglage de l'opacité ;
 - réutilisation de la police embarquée lors de la modification quand elle est extractible ;
 - annulation/rétablissement sur 20 opérations ;
 - export d'un nouveau PDF sans envoi réseau.
@@ -49,7 +50,7 @@ py -3.12 -m venv .venv
 .\build_windows.ps1
 ```
 
-L'exécutable autonome est créé dans `dist\PdfEditor 0.5.0\PdfEditor.exe`.
+L'exécutable autonome est créé dans `dist\PdfEditor 0.6.0\PdfEditor.exe`.
 
 Pour générer l'installateur Windows :
 
@@ -57,7 +58,22 @@ Pour générer l'installateur Windows :
 .\build_installer.ps1
 ```
 
-L'installateur est créé dans `dist\installer\PdfEditor-Setup-0.5.0.exe`.
+L'installateur est créé dans `dist\installer\PdfEditor-Setup-0.6.0.exe`.
+
+## Signature Windows
+
+L'éditeur Windows est `Zouzouko Bernard`. Pour supprimer l'avertissement
+« éditeur inconnu », la construction accepte un certificat Authenticode reconnu :
+
+```powershell
+$env:PDFEDITOR_CERTIFICATE="C:\certificats\zouzouko-bernard.pfx"
+$env:PDFEDITOR_CERTIFICATE_PASSWORD="mot-de-passe"
+.\build_installer.ps1
+```
+
+Microsoft SmartScreen peut conserver un avertissement de réputation pendant les
+premiers téléchargements, même avec un certificat standard. Un certificat EV réduit
+généralement ce délai.
 
 ## Utilisation
 
@@ -76,9 +92,7 @@ L'installateur est créé dans `dist\installer\PdfEditor-Setup-0.5.0.exe`.
 
 La modification de texte supprime le bloc sélectionné puis réinsère le nouveau contenu
 avec la police embarquée extraite du PDF, ou sa meilleure correspondance Windows.
-Les conversions produisent des documents Office exploitables mais ne reproduisent pas
-parfaitement toutes les mises en page PDF complexes. Les PDF contenant des effets
-graphiques, des polices non extractibles ou des paragraphes composés caractère par
+Les PDF contenant des effets graphiques, des polices non extractibles ou des paragraphes composés caractère par
 caractère restent limités par le moteur PyMuPDF.
 
 ## Licence du moteur

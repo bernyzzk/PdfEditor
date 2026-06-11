@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
 
 from .canvas import PdfCanvas, Tool
 from .model import PdfDocument, PdfObject
+from .signatures import SignatureDialog
 from .stamps import StampConfig, StampDialog
 
 
@@ -39,7 +40,7 @@ class MainWindow(QMainWindow):
         self.model = PdfDocument()
         self.canvas = PdfCanvas(self.model)
         self.thumbnails = QListWidget()
-        self.signature_path = ""
+        self.signature_data = b""
         self.stamp_config = StampConfig()
         self.stamp_data = b""
         self.text_color = QColor("#111827")
@@ -107,6 +108,9 @@ class MainWindow(QMainWindow):
         self.replace_image_action.setEnabled(False)
         top.addAction(self.replace_image_action)
         top.addAction(self._action("Effacer l'objet sélectionné", "Delete", self.erase_selected, icon=self._draw_icon("trash")))
+        self.rotate_object_action = self._action("Faire pivoter l'objet sélectionné de 90°", "Ctrl+Shift+R", self.rotate_selected_object, icon=self._draw_icon("rotate-object"))
+        self.rotate_object_action.setEnabled(False)
+        top.addAction(self.rotate_object_action)
         top.addSeparator()
         top.addAction(self._action("Rotation de la page", "Ctrl+R", self.rotate_page, icon=self._draw_icon("rotate")))
         top.addAction(self._action("Supprimer la page", "Ctrl+Delete", self.delete_page, QStyle.StandardPixmap.SP_TrashIcon))
@@ -115,9 +119,6 @@ class MainWindow(QMainWindow):
         top.addAction(self._action("Rechercher du texte", "Ctrl+F", self.search_text, QStyle.StandardPixmap.SP_FileDialogContentsView))
         top.addAction(self._action("Masquer définitivement un terme", "", self.redact_text, icon=self._draw_icon("redact")))
         top.addAction(self._action("OCR local du document", "", self.run_ocr, icon=self._draw_icon("ocr")))
-        top.addAction(self._action("Convertir vers Word", "", self.export_word, icon=self._draw_icon("word")))
-        top.addAction(self._action("Convertir vers Excel", "", self.export_excel, icon=self._draw_icon("excel")))
-        top.addAction(self._action("Convertir vers PowerPoint", "", self.export_powerpoint, icon=self._draw_icon("powerpoint")))
         top.addSeparator()
         top.addAction(self._action("Zoom arrière", "Ctrl+-", lambda: self.change_zoom(-0.15), QStyle.StandardPixmap.SP_ArrowDown))
         top.addAction(self._action("Zoom avant", "Ctrl++", lambda: self.change_zoom(0.15), QStyle.StandardPixmap.SP_ArrowUp))
@@ -168,6 +169,10 @@ class MainWindow(QMainWindow):
         self.apply_geometry_button.setEnabled(False)
         self.apply_geometry_button.clicked.connect(self.apply_geometry)
         inspector_layout.addWidget(self.apply_geometry_button)
+        self.rotate_object_button = QPushButton("Faire pivoter l'objet de 90°")
+        self.rotate_object_button.setEnabled(False)
+        self.rotate_object_button.clicked.connect(self.rotate_selected_object)
+        inspector_layout.addWidget(self.rotate_object_button)
         inspector_layout.addStretch()
         inspector.setWidget(inspector_body)
         inspector.setMinimumWidth(225)
@@ -301,7 +306,13 @@ class MainWindow(QMainWindow):
         self.page_count_label.setText(f" / {count} ")
 
     def set_tool(self, tool: Tool) -> None:
-        if tool == Tool.STAMP:
+        if tool == Tool.SIGNATURE:
+            dialog = SignatureDialog(self)
+            if not dialog.exec():
+                tool = self.canvas.tool
+            else:
+                self.signature_data = dialog.signature_data()
+        elif tool == Tool.STAMP:
             dialog = StampDialog(self, self.stamp_config)
             if not dialog.exec():
                 tool = self.canvas.tool
@@ -314,6 +325,8 @@ class MainWindow(QMainWindow):
 
     def _object_selected(self, obj: PdfObject | None) -> None:
         self.replace_image_action.setEnabled(bool(obj and obj.kind == "image"))
+        self.rotate_object_action.setEnabled(bool(obj))
+        self.rotate_object_button.setEnabled(bool(obj))
         if not obj:
             self.selection_label.setText("  Aucun objet sélectionné")
             for field in self.geometry_fields.values():
@@ -372,12 +385,12 @@ class MainWindow(QMainWindow):
             self.model.add_image(self.model.page_index, rect, path)
 
     def add_signature(self, rect: fitz.Rect) -> None:
-        path = self.signature_path
-        if not path:
-            path, _ = QFileDialog.getOpenFileName(self, "Choisir une signature", "", "Images (*.png *.jpg *.jpeg)")
-        if path:
-            self.signature_path = path
-            self.model.add_signature(self.model.page_index, rect, path)
+        if not self.signature_data:
+            dialog = SignatureDialog(self)
+            if not dialog.exec():
+                return
+            self.signature_data = dialog.signature_data()
+        self.model.add_signature(self.model.page_index, rect, self.signature_data)
 
     def add_stamp(self, rect: fitz.Rect) -> None:
         if not self.stamp_data:
@@ -410,6 +423,14 @@ class MainWindow(QMainWindow):
 
     def rotate_page(self) -> None:
         self.model.rotate_page(self.model.page_index)
+
+    def rotate_selected_object(self) -> None:
+        obj = self.canvas.selected
+        if not obj:
+            return
+        self.canvas.selected = self.model.rotate_object(self.model.page_index, obj, 90)
+        self._object_selected(self.canvas.selected)
+        self.status_label.setText("Objet pivoté de 90°")
 
     def delete_page(self) -> None:
         if self.model.page_count <= 1:
@@ -468,29 +489,6 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "OCR local", f"OCR terminé sur {count} page(s).")
         except Exception as exc:
             QMessageBox.critical(self, "OCR impossible", str(exc))
-        finally:
-            QApplication.restoreOverrideCursor()
-
-    def export_word(self) -> None:
-        self._export_office("Word (*.docx)", ".docx", self.model.export_word)
-
-    def export_excel(self) -> None:
-        self._export_office("Excel (*.xlsx)", ".xlsx", self.model.export_excel)
-
-    def export_powerpoint(self) -> None:
-        self._export_office("PowerPoint (*.pptx)", ".pptx", self.model.export_powerpoint)
-
-    def _export_office(self, file_filter: str, suffix: str, exporter) -> None:
-        if not self.model.is_open:
-            return
-        path, _ = QFileDialog.getSaveFileName(self, "Convertir le document", "", file_filter)
-        if not path:
-            return
-        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
-        try:
-            exporter(path if path.lower().endswith(suffix) else path + suffix)
-        except Exception as exc:
-            QMessageBox.critical(self, "Conversion impossible", str(exc))
         finally:
             QApplication.restoreOverrideCursor()
 
@@ -565,6 +563,8 @@ class MainWindow(QMainWindow):
             painter.drawRect(8, 9, 13, 15); painter.drawLine(6, 7, 23, 7); painter.drawLine(11, 4, 18, 4)
         elif name == "rotate":
             painter.drawArc(5, 5, 18, 18, 30 * 16, 280 * 16); painter.drawPolyline(polygon([(18, 4), (23, 5), (22, 10)]))
+        elif name == "rotate-object":
+            painter.drawRect(8, 8, 12, 12); painter.drawArc(3, 3, 22, 22, 35 * 16, 220 * 16); painter.drawPolyline(polygon([(19, 3), (24, 4), (23, 9)]))
         elif name == "replace":
             painter.drawLine(5, 10, 22, 10); painter.drawPolyline(polygon([(18, 6), (22, 10), (18, 14)])); painter.drawLine(22, 19, 5, 19)
         elif name == "merge":
@@ -575,12 +575,6 @@ class MainWindow(QMainWindow):
             painter.drawRect(4, 7, 20, 14); painter.fillRect(7, 11, 14, 6, QColor("#26344d"))
         elif name == "ocr":
             painter.drawEllipse(5, 5, 18, 18); painter.drawLine(14, 7, 14, 21); painter.drawLine(8, 14, 20, 14)
-        elif name == "word":
-            painter.drawRect(5, 4, 18, 20); painter.drawText(8, 20, "W")
-        elif name == "excel":
-            painter.drawRect(5, 4, 18, 20); painter.drawText(8, 20, "X")
-        elif name == "powerpoint":
-            painter.drawRect(5, 4, 18, 20); painter.drawText(8, 20, "P")
         else:
             painter.drawEllipse(6, 6, 16, 16)
         painter.end()

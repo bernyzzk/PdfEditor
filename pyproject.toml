@@ -1,6 +1,6 @@
 [project]
 name = "pdfeditor"
-version = "0.5.0"
+version = "0.6.0"
 description = "Editeur PDF desktop local pour Windows"
 requires-python = ">=3.12"
 dependencies = [

@@ -1,6 +1,6 @@
 #define MyAppName "PdfEditor"
-#define MyAppVersion "0.5.0"
-#define MyAppPublisher "ERA Informatique"
+#define MyAppVersion "0.6.0"
+#define MyAppPublisher "Zouzouko Bernard"
 #define MyAppExeName "PdfEditor.exe"
 
 [Setup]
@@ -30,7 +30,7 @@ Name: "french"; MessagesFile: "compiler:Languages\French.isl"
 Name: "desktopicon"; Description: "Créer une icône sur le bureau"; GroupDescription: "Icônes supplémentaires :"; Flags: unchecked
 
 [Files]
-Source: "..\dist\PdfEditor 0.5.0\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\dist\PdfEditor 0.6.0\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\PdfEditor"; Filename: "{app}\{#MyAppExeName}"

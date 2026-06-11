@@ -13,7 +13,7 @@ def main() -> int:
     app = QApplication(sys.argv)
     app.setApplicationName("PdfEditor")
     app.setApplicationDisplayName("PdfEditor")
-    app.setOrganizationName("ERA Informatique")
+    app.setOrganizationName("Zouzouko Bernard")
     base = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
     app.setWindowIcon(QIcon(str(base / "assets" / "pdfeditor.ico")))
     window = MainWindow()

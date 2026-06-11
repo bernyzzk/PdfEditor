@@ -35,4 +35,6 @@ def test_stamp_tool_is_available() -> None:
     window = MainWindow()
     assert Tool.STAMP in window.tool_actions
     assert "Tampon" in window.tool_actions[Tool.STAMP].toolTip()
+    assert hasattr(window, "rotate_object_action")
+    assert not hasattr(window, "export_word")
     window.close()

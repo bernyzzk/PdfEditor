@@ -268,6 +268,35 @@ class PdfDocument(QObject):
             page.insert_image(new_rect, stream=self._normalize_image(image_data), keep_proportion=False)
         self._commit()
 
+    def rotate_object(self, page_index: int, obj: PdfObject, degrees: float = 90) -> PdfObject | None:
+        if not self.doc or obj.rect.is_empty:
+            return None
+        from io import BytesIO
+        from PIL import Image
+
+        page = self.doc.load_page(page_index)
+        image_data = page.get_pixmap(matrix=fitz.Matrix(4, 4), clip=obj.rect, alpha=True).tobytes("png")
+        with Image.open(BytesIO(image_data)) as source:
+            rotated = source.convert("RGBA").rotate(-degrees, expand=True, resample=Image.Resampling.BICUBIC)
+            output = BytesIO()
+            rotated.save(output, "PNG")
+            rotated_data = output.getvalue()
+            ratio = rotated.width / max(rotated.height, 1)
+
+        center = fitz.Point((obj.rect.x0 + obj.rect.x1) / 2, (obj.rect.y0 + obj.rect.y1) / 2)
+        area = max(obj.rect.get_area(), 100)
+        height = (area / max(ratio, 0.01)) ** 0.5
+        width = height * ratio
+        target = fitz.Rect(center.x - width / 2, center.y - height / 2, center.x + width / 2, center.y + height / 2)
+
+        self._checkpoint()
+        page.add_redact_annot(obj.rect + (-1, -1, 1, 1), fill=(1, 1, 1), cross_out=False)
+        page.apply_redactions(images=2, graphics=2, text=0)
+        self._compact_document()
+        self.doc.load_page(page_index).insert_image(target, stream=rotated_data, keep_proportion=False, overlay=True)
+        self._commit()
+        return self.object_at(page_index, center)
+
     def copy_object_payload(self, page_index: int, obj: PdfObject) -> dict:
         payload = {
             "kind": obj.kind,
@@ -411,8 +440,12 @@ class PdfDocument(QObject):
         annot.update()
         self._commit()
 
-    def add_signature(self, page_index: int, rect: fitz.Rect, image_path: str) -> None:
-        self.add_image(page_index, rect, image_path)
+    def add_signature(self, page_index: int, rect: fitz.Rect, image_data: bytes) -> None:
+        if not self.doc or rect.is_empty or not image_data:
+            return
+        self._checkpoint()
+        self.doc.load_page(page_index).insert_image(rect, stream=image_data, keep_proportion=True, overlay=True)
+        self._commit()
 
     def add_stamp(self, page_index: int, rect: fitz.Rect, image_data: bytes) -> None:
         if not self.doc or rect.is_empty or not image_data:
@@ -497,56 +530,6 @@ class PdfDocument(QObject):
             output.close()
             self._undo.pop()
         return count
-
-    def export_word(self, path: str) -> None:
-        if not self.doc:
-            return
-        from docx import Document
-        from docx.shared import Pt
-
-        document = Document()
-        for index, page in enumerate(self.doc):
-            if index:
-                document.add_page_break()
-            for obj in self.page_objects(index):
-                if obj.kind != "text" or not obj.text.strip():
-                    continue
-                paragraph = document.add_paragraph()
-                run = paragraph.add_run(obj.text)
-                run.font.name = obj.font
-                run.font.size = Pt(obj.size)
-        document.save(path)
-
-    def export_excel(self, path: str) -> None:
-        if not self.doc:
-            return
-        from openpyxl import Workbook
-
-        workbook = Workbook()
-        workbook.remove(workbook.active)
-        for index, page in enumerate(self.doc):
-            sheet = workbook.create_sheet(f"Page {index + 1}")
-            for row, line in enumerate(page.get_text("text").splitlines(), 1):
-                sheet.cell(row, 1, line)
-            sheet.column_dimensions["A"].width = 100
-        workbook.save(path)
-
-    def export_powerpoint(self, path: str) -> None:
-        if not self.doc:
-            return
-        from io import BytesIO
-        from pptx import Presentation
-        from pptx.util import Inches
-
-        presentation = Presentation()
-        presentation.slide_width = Inches(11.69)
-        presentation.slide_height = Inches(8.27)
-        blank = presentation.slide_layouts[6]
-        for page in self.doc:
-            slide = presentation.slides.add_slide(blank)
-            pix = page.get_pixmap(dpi=140, alpha=False)
-            slide.shapes.add_picture(BytesIO(pix.tobytes("png")), 0, 0, presentation.slide_width, presentation.slide_height)
-        presentation.save(path)
 
     def undo(self) -> None:
         if not self.doc or not self._undo:

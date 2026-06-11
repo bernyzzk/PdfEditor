@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QImage, QColor
 
 from pdf_editor.model import PdfDocument
+from pdf_editor.signatures import SignatureModel, render_signature
 from pdf_editor.stamps import StampConfig, render_stamp
 
 
@@ -134,12 +135,9 @@ def test_subset_font_edit_supports_french_and_euro(tmp_path: Path) -> None:
     edited.close()
 
 
-def test_ocr_and_office_exports(tmp_path: Path) -> None:
+def test_ocr(tmp_path: Path) -> None:
     QApplication.instance() or QApplication([])
     from PIL import Image, ImageDraw, ImageFont
-    from docx import Document
-    from openpyxl import load_workbook
-    from pptx import Presentation
 
     image_path = tmp_path / "scan.png"
     image = Image.new("RGB", (1200, 500), "white")
@@ -160,17 +158,6 @@ def test_ocr_and_office_exports(tmp_path: Path) -> None:
     assert not model.doc[0].get_text().strip()
     assert model.run_ocr(language="eng") == 1
     assert "FACTURE" in model.doc[0].get_text().upper()
-
-    word = tmp_path / "result.docx"
-    excel = tmp_path / "result.xlsx"
-    powerpoint = tmp_path / "result.pptx"
-    model.export_word(str(word))
-    model.export_excel(str(excel))
-    model.export_powerpoint(str(powerpoint))
-    assert "FACTURE" in "\n".join(p.text for p in Document(word).paragraphs).upper()
-    assert "FACTURE" in str(load_workbook(excel).active["A1"].value).upper()
-    assert len(Presentation(powerpoint).slides) == 1
-
 
 def test_rotated_clockify_style_pdf_is_editable(tmp_path: Path) -> None:
     QApplication.instance() or QApplication([])
@@ -228,3 +215,32 @@ def test_stamp_with_text_date_and_transparent_logo(tmp_path: Path) -> None:
     exported = fitz.open(output)
     assert exported[0].get_image_info()
     exported.close()
+
+
+def test_rotate_selected_object_and_signature_opacity(tmp_path: Path) -> None:
+    QApplication.instance() or QApplication([])
+    source = tmp_path / "objects.pdf"
+    signature_path = tmp_path / "signature.png"
+    signature = QImage(200, 80, QImage.Format.Format_ARGB32)
+    signature.fill(QColor(20, 60, 180, 255))
+    assert signature.save(str(signature_path))
+
+    doc = fitz.open()
+    doc.new_page()
+    doc.save(source)
+    doc.close()
+
+    data = render_signature(SignatureModel("Direction", str(signature_path), 35))
+    from PIL import Image
+    from io import BytesIO
+    with Image.open(BytesIO(data)) as rendered:
+        assert rendered.getchannel("A").getextrema()[1] < 100
+
+    model = PdfDocument()
+    assert model.open(str(source))
+    model.add_signature(0, fitz.Rect(100, 100, 300, 180), data)
+    obj = model.object_at(0, fitz.Point(200, 140))
+    assert obj and obj.kind == "image"
+    rotated = model.rotate_object(0, obj, 90)
+    assert rotated and rotated.kind == "image"
+    assert rotated.rect.height > rotated.rect.width

@@ -16,6 +16,7 @@ $distPath = Join-Path $env:TEMP "pdfeditor-dist"
     --windowed `
     --name "PdfEditor" `
     --icon "assets\pdfeditor.ico" `
+    --version-file "version_info.txt" `
     --collect-all pymupdf `
     --add-data "ocr-data;ocr-data" `
     --add-data "assets;assets" `
@@ -25,7 +26,8 @@ if ($LASTEXITCODE -ne 0) {
     throw "La génération de l'application a échoué."
 }
 
-$finalPath = "dist\PdfEditor 0.5.0"
+$finalPath = "dist\PdfEditor 0.6.0"
 New-Item -ItemType Directory -Path $finalPath -Force | Out-Null
 Copy-Item -Path "$distPath\PdfEditor\*" -Destination $finalPath -Recurse -Force
+.\sign_artifacts.ps1 -Paths "$finalPath\PdfEditor.exe"
 Write-Host "Application générée dans $finalPath\PdfEditor.exe"
