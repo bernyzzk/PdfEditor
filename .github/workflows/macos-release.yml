@@ -1,0 +1,52 @@
+name: Build macOS DMG
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*-mac"
+
+permissions:
+  contents: write
+
+jobs:
+  build-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python3 -m pip install -r requirements-dev.txt
+
+      - name: Verify macOS import and font discovery
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          python3 -c "from pdf_editor.model import PdfDocument; print(PdfDocument._system_font_file('Arial'))"
+          python3 -m pytest -q tests/test_ui.py
+
+      - name: Build DMG
+        run: bash build_macos.sh
+
+      - name: Smoke-test application bundle
+        run: |
+          test -d dist/PdfEditor.app
+          test -f dist/PdfEditor-0.7.0-macOS.dmg
+          codesign --verify --deep --strict dist/PdfEditor.app
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: PdfEditor-0.7.0-macOS
+          path: dist/PdfEditor-0.7.0-macOS.dmg
+
+      - name: Attach DMG to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/PdfEditor-0.7.0-macOS.dmg
+          generate_release_notes: true
