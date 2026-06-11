@@ -3,9 +3,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 import os
 from pathlib import Path
+import platform
 import re
 import tempfile
-import winreg
+
+if platform.system() == "Windows":
+    import winreg
 
 import fitz
 from PySide6.QtCore import QObject, Signal
@@ -606,14 +609,14 @@ class PdfDocument(QObject):
         }
         if normalized in aliases:
             return aliases[normalized], None
-        font_file = PdfDocument._windows_font_file(font)
+        font_file = PdfDocument._system_font_file(font)
         if font_file:
             resource_name = "F_" + re.sub(r"[^A-Za-z0-9]", "", font)[:24]
             return resource_name, font_file
         return "helv", None
 
     def _font_for_object(self, page: fitz.Page, obj: PdfObject, requested_font: str) -> tuple[str, str | None]:
-        local_font = self._windows_font_file(requested_font)
+        local_font = self._system_font_file(requested_font)
         if local_font:
             self._font_serial += 1
             resource = "Edit_" + re.sub(r"[^A-Za-z0-9]", "", requested_font)[:14] + f"_{self._font_serial}"
@@ -639,7 +642,7 @@ class PdfDocument(QObject):
             self._font_serial += 1
             unique = "Edit_" + re.sub(r"[^A-Za-z0-9]", "", requested_font)[:14] + f"_{self._font_serial}"
             return unique, fontfile
-        fallback = self._windows_font_file("Arial")
+        fallback = self._system_font_file("Arial")
         if fallback:
             self._font_serial += 1
             return f"Edit_Arial_{self._font_serial}", fallback
@@ -653,6 +656,8 @@ class PdfDocument(QObject):
             Path(getattr(sys, "_MEIPASS", "")) / "ocr-data",
             Path(__file__).resolve().parent.parent / "ocr-data",
             Path(r"C:\Program Files\Tesseract-OCR\tessdata"),
+            Path("/opt/homebrew/share/tessdata"),
+            Path("/usr/local/share/tessdata"),
         ]
         for path in candidates:
             if (path / "eng.traineddata").exists():
@@ -726,26 +731,40 @@ class PdfDocument(QObject):
         ) >= 0
 
     @staticmethod
-    def _windows_font_file(font: str) -> str | None:
+    def _system_font_file(font: str) -> str | None:
         wanted = re.sub(r"[^a-z0-9]", "", font.lower())
         for suffix in ("bolditalicmt", "boldmt", "italicmt", "regularmt", "mt"):
             if wanted.endswith(suffix):
                 wanted = wanted[: -len(suffix)]
                 break
-        keys = (
-            r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts",
-            r"SOFTWARE\WOW6432Node\Microsoft\Windows NT\CurrentVersion\Fonts",
-        )
-        for key_name in keys:
-            try:
-                with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key_name) as key:
-                    for index in range(winreg.QueryInfoKey(key)[1]):
-                        label, value, _ = winreg.EnumValue(key, index)
-                        family = re.sub(r"[^a-z0-9]", "", label.lower().split("(")[0])
-                        if wanted in family or family in wanted:
-                            path = value if os.path.isabs(value) else os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts", value)
-                            if os.path.isfile(path):
-                                return path
-            except OSError:
-                continue
+        if platform.system() == "Windows":
+            keys = (
+                r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Fonts",
+                r"SOFTWARE\WOW6432Node\Microsoft\Windows NT\CurrentVersion\Fonts",
+            )
+            for key_name in keys:
+                try:
+                    with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, key_name) as key:
+                        for index in range(winreg.QueryInfoKey(key)[1]):
+                            label, value, _ = winreg.EnumValue(key, index)
+                            family = re.sub(r"[^a-z0-9]", "", label.lower().split("(")[0])
+                            if wanted in family or family in wanted:
+                                path = value if os.path.isabs(value) else os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts", value)
+                                if os.path.isfile(path):
+                                    return path
+                except OSError:
+                    continue
+        else:
+            aliases = {"arial": "helvetica", "timesnewroman": "timesnewroman", "couriernew": "couriernew"}
+            wanted = aliases.get(wanted, wanted)
+            roots = [Path.home() / "Library/Fonts", Path("/Library/Fonts"), Path("/System/Library/Fonts")]
+            for root in roots:
+                if not root.exists():
+                    continue
+                for path in root.rglob("*"):
+                    if path.suffix.lower() not in (".ttf", ".otf", ".ttc"):
+                        continue
+                    name = re.sub(r"[^a-z0-9]", "", path.stem.lower())
+                    if wanted in name or name in wanted:
+                        return str(path)
         return None

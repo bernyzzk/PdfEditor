@@ -1,12 +1,14 @@
 # PdfEditor
 
-Application Windows locale en Python, inspirée des éditeurs PDF desktop modernes.
+Application locale Windows et macOS en Python, inspirée des éditeurs PDF desktop modernes.
 
 ![Icône PdfEditor](assets/pdfeditor-512.png)
 
 ## Télécharger
 
 [Télécharger la dernière version Windows de PdfEditor](https://github.com/bernyzzk/PdfEditor/releases/latest)
+
+La version macOS est fournie sous forme de fichier DMG dans les releases GitHub.
 
 ## Fonctions disponibles
 
@@ -59,6 +61,16 @@ Pour générer l'installateur Windows :
 ```
 
 L'installateur est créé dans `dist\installer\PdfEditor-Setup-0.6.0.exe`.
+
+## Générer l'application macOS
+
+Sur un Mac :
+
+```bash
+bash build_macos.sh
+```
+
+Le disque d'installation est créé dans `dist/PdfEditor-0.7.0-macOS.dmg`.
 
 ## Signature Windows
 

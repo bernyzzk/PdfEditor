@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import date
 from io import BytesIO
 from pathlib import Path
+import platform
 
 from PIL import Image, ImageDraw, ImageFont
 from PySide6.QtCore import Qt
@@ -62,9 +63,14 @@ def render_stamp(config: StampConfig, size: tuple[int, int] = (1200, 360)) -> by
     text = config.text.strip() or "Tampon"
     if config.include_date:
         text += f"\n{date.today():%d/%m/%Y}"
-    font_path = Path(r"C:\Windows\Fonts\arialbd.ttf")
+    font_candidates = [
+        Path(r"C:\Windows\Fonts\arialbd.ttf"),
+        Path("/System/Library/Fonts/Supplemental/Arial Bold.ttf"),
+        Path("/System/Library/Fonts/Supplemental/Helvetica.ttc"),
+    ]
+    font_path = next((path for path in font_candidates if path.exists()), None)
     font_size = height // (4 if "\n" in text else 3)
-    font = ImageFont.truetype(str(font_path), font_size) if font_path.exists() else ImageFont.load_default()
+    font = ImageFont.truetype(str(font_path), font_size) if font_path else ImageFont.load_default()
     text_box = draw.multiline_textbbox((0, 0), text, font=font, spacing=8, align="center", stroke_width=1)
     text_width = text_box[2] - text_box[0]
     text_height = text_box[3] - text_box[1]
