@@ -23,6 +23,7 @@ Application Windows locale en Python, inspirée des éditeurs PDF desktop modern
 - ajout de liens web par zone ;
 - dessin libre et surlignage compatibles PDF ;
 - insertion d'une signature PNG/JPG ;
+- tampons prédéfinis ou personnalisés avec texte, date automatique et logo transparent ;
 - rotation, suppression et réorganisation des pages par glisser-déposer ;
 - fusion de plusieurs PDF et extraction de la page actuelle ;
 - recherche de texte ;
@@ -48,7 +49,7 @@ py -3.12 -m venv .venv
 .\build_windows.ps1
 ```
 
-L'exécutable autonome est créé dans `dist\PdfEditor 0.4.0\PdfEditor.exe`.
+L'exécutable autonome est créé dans `dist\PdfEditor 0.5.0\PdfEditor.exe`.
 
 Pour générer l'installateur Windows :
 
@@ -56,7 +57,7 @@ Pour générer l'installateur Windows :
 .\build_installer.ps1
 ```
 
-L'installateur est créé dans `dist\installer\PdfEditor-Setup-0.4.0.exe`.
+L'installateur est créé dans `dist\installer\PdfEditor-Setup-0.5.0.exe`.
 
 ## Utilisation
 

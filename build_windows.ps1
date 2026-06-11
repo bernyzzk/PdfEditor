@@ -25,7 +25,7 @@ if ($LASTEXITCODE -ne 0) {
     throw "La génération de l'application a échoué."
 }
 
-$finalPath = "dist\PdfEditor 0.4.0"
+$finalPath = "dist\PdfEditor 0.5.0"
 New-Item -ItemType Directory -Path $finalPath -Force | Out-Null
 Copy-Item -Path "$distPath\PdfEditor\*" -Destination $finalPath -Recurse -Force
 Write-Host "Application générée dans $finalPath\PdfEditor.exe"

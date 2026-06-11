@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
 
 from .canvas import PdfCanvas, Tool
 from .model import PdfDocument, PdfObject
+from .stamps import StampConfig, StampDialog
 
 
 class MainWindow(QMainWindow):
@@ -39,6 +40,8 @@ class MainWindow(QMainWindow):
         self.canvas = PdfCanvas(self.model)
         self.thumbnails = QListWidget()
         self.signature_path = ""
+        self.stamp_config = StampConfig()
+        self.stamp_data = b""
         self.text_color = QColor("#111827")
         self._loading_thumbnails = False
         self._build_ui()
@@ -88,6 +91,7 @@ class MainWindow(QMainWindow):
             (Tool.HIGHLIGHT, "Surligner", "H", "highlight"),
             (Tool.ERASER, "Gomme d'objet", "E", "eraser"),
             (Tool.SIGNATURE, "Signature", "G", "signature"),
+            (Tool.STAMP, "Tampon", "M", "stamp"),
         ]
         for tool, tooltip, shortcut, icon_name in tool_specs:
             action = self._action(tooltip, shortcut, lambda checked=False, t=tool: self.set_tool(t), icon=self._draw_icon(icon_name))
@@ -212,6 +216,7 @@ class MainWindow(QMainWindow):
         self.canvas.signature_requested.connect(self.add_signature)
         self.canvas.image_requested.connect(self.add_image)
         self.canvas.link_requested.connect(self.add_link)
+        self.canvas.stamp_requested.connect(self.add_stamp)
         self.canvas.object_selected.connect(self._object_selected)
         self.canvas.status.connect(self.status_label.setText)
         self.canvas.pan_requested.connect(self._pan_canvas)
@@ -296,6 +301,13 @@ class MainWindow(QMainWindow):
         self.page_count_label.setText(f" / {count} ")
 
     def set_tool(self, tool: Tool) -> None:
+        if tool == Tool.STAMP:
+            dialog = StampDialog(self, self.stamp_config)
+            if not dialog.exec():
+                tool = self.canvas.tool
+            else:
+                self.stamp_data = dialog.stamp_data()
+                self.stamp_config = dialog.config
         for current, action in self.tool_actions.items():
             action.setChecked(current == tool)
         self.canvas.set_tool(tool)
@@ -366,6 +378,16 @@ class MainWindow(QMainWindow):
         if path:
             self.signature_path = path
             self.model.add_signature(self.model.page_index, rect, path)
+
+    def add_stamp(self, rect: fitz.Rect) -> None:
+        if not self.stamp_data:
+            dialog = StampDialog(self, self.stamp_config)
+            if not dialog.exec():
+                return
+            self.stamp_data = dialog.stamp_data()
+            self.stamp_config = dialog.config
+        self.model.add_stamp(self.model.page_index, rect, self.stamp_data)
+        self.status_label.setText(f"Tampon « {self.stamp_config.text} » ajouté")
 
     def add_link(self, rect: fitz.Rect) -> None:
         uri, ok = QInputDialog.getText(self, "Ajouter un lien", "Adresse web :")
@@ -527,6 +549,10 @@ class MainWindow(QMainWindow):
             painter.drawPolygon(polygon([(5, 18), (15, 6), (23, 14), (14, 23)]))
         elif name == "signature":
             painter.drawPolyline(polygon([(4, 20), (9, 10), (11, 20), (16, 13), (17, 20), (24, 17)]))
+        elif name == "stamp":
+            painter.drawRoundedRect(4, 7, 20, 14, 3, 3)
+            painter.drawLine(8, 11, 20, 11)
+            painter.drawLine(8, 16, 20, 16)
         elif name == "check":
             painter.drawPolyline(polygon([(5, 14), (11, 20), (23, 7)]))
         elif name == "hand":

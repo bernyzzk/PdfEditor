@@ -28,3 +28,11 @@ def test_inline_editor_and_selection_mode(tmp_path: Path) -> None:
     assert "Modification directe réussie" in window.model.doc[0].get_text().replace("\xa0", " ")
     window.model.close()
     window.close()
+
+
+def test_stamp_tool_is_available() -> None:
+    QApplication.instance() or QApplication([])
+    window = MainWindow()
+    assert Tool.STAMP in window.tool_actions
+    assert "Tampon" in window.tool_actions[Tool.STAMP].toolTip()
+    window.close()

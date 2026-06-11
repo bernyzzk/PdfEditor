@@ -414,6 +414,13 @@ class PdfDocument(QObject):
     def add_signature(self, page_index: int, rect: fitz.Rect, image_path: str) -> None:
         self.add_image(page_index, rect, image_path)
 
+    def add_stamp(self, page_index: int, rect: fitz.Rect, image_data: bytes) -> None:
+        if not self.doc or rect.is_empty or not image_data:
+            return
+        self._checkpoint()
+        self.doc.load_page(page_index).insert_image(rect, stream=image_data, keep_proportion=False, overlay=True)
+        self._commit()
+
     def rotate_page(self, index: int, degrees: int = 90) -> None:
         if not self.doc:
             return

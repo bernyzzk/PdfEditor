@@ -20,6 +20,7 @@ class Tool(Enum):
     HIGHLIGHT = auto()
     ERASER = auto()
     SIGNATURE = auto()
+    STAMP = auto()
 
 
 class InlineTextEditor(QPlainTextEdit):
@@ -42,6 +43,7 @@ class PdfCanvas(QWidget):
     signature_requested = Signal(object)
     image_requested = Signal(object)
     link_requested = Signal(object)
+    stamp_requested = Signal(object)
     pan_requested = Signal(int, int)
 
     def __init__(self, model: PdfDocument) -> None:
@@ -76,7 +78,7 @@ class PdfCanvas(QWidget):
         cursor = Qt.CursorShape.ArrowCursor
         if tool in (Tool.PAN, Tool.SELECT):
             cursor = Qt.CursorShape.OpenHandCursor
-        if tool in (Tool.TEXT, Tool.IMAGE, Tool.LINK, Tool.HIGHLIGHT, Tool.SIGNATURE):
+        if tool in (Tool.TEXT, Tool.IMAGE, Tool.LINK, Tool.HIGHLIGHT, Tool.SIGNATURE, Tool.STAMP):
             cursor = Qt.CursorShape.CrossCursor
         elif tool == Tool.DRAW:
             cursor = Qt.CursorShape.PointingHandCursor
@@ -183,7 +185,7 @@ class PdfCanvas(QWidget):
             return
         if self.tool == Tool.DRAW:
             self.ink_points = [point]
-        elif self.tool in (Tool.IMAGE, Tool.LINK, Tool.HIGHLIGHT, Tool.SIGNATURE):
+        elif self.tool in (Tool.IMAGE, Tool.LINK, Tool.HIGHLIGHT, Tool.SIGNATURE, Tool.STAMP):
             self.drag_start = point
             self.drag_end = point
         self.update()
@@ -250,6 +252,8 @@ class PdfCanvas(QWidget):
                 self.link_requested.emit(rect)
             elif self.tool == Tool.SIGNATURE:
                 self.signature_requested.emit(rect)
+            elif self.tool == Tool.STAMP:
+                self.stamp_requested.emit(rect)
         self.ink_points, self.drag_start, self.drag_end = [], None, None
         self.transform_start, self.transform_original, self.transform_preview = None, None, None
         self.resize_handle = None

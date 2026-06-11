@@ -1,6 +1,6 @@
 # Rapport de validation fonctionnelle
 
-Version testée : PdfEditor 0.4.0
+Version testée : PdfEditor 0.5.0
 
 La suite automatisée couvre les parcours suivants :
 
@@ -12,6 +12,7 @@ La suite automatisée couvre les parcours suivants :
 - rendu haute définition, cache de rendu et cache d'analyse des objets ;
 - affichage des zones modifiables, huit poignées et inspecteur de mise en page ;
 - copier-coller de texte et d'image ;
+- création et insertion de tampons avec texte, date automatique et logo transparent ;
 - dessin, surlignage, lien, gomme et redaction ;
 - rotation, suppression, réorganisation, fusion et extraction de pages ;
 - annulation, rétablissement et export PDF ;
@@ -19,7 +20,7 @@ La suite automatisée couvre les parcours suivants :
 - conversion puis réouverture de fichiers Word, Excel et PowerPoint ;
 - utilisation de l'éditeur de texte directement sur le canevas.
 
-Résultat automatisé : **6 scénarios réussis sur 6**.
+Résultat automatisé : **8 scénarios réussis sur 8**.
 
 Le test réel Clockify confirme également le déplacement/redimensionnement du titre,
 la copie d'une image, son collage à un nouvel emplacement et la réouverture du PDF

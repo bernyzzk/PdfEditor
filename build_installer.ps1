@@ -18,4 +18,4 @@ if ($LASTEXITCODE -ne 0) {
     throw "La génération de l'installateur a échoué."
 }
 
-Write-Host "Installateur généré dans dist\installer\PdfEditor-Setup-0.4.0.exe"
+Write-Host "Installateur généré dans dist\installer\PdfEditor-Setup-0.5.0.exe"

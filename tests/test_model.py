@@ -5,6 +5,7 @@ from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QImage, QColor
 
 from pdf_editor.model import PdfDocument
+from pdf_editor.stamps import StampConfig, render_stamp
 
 
 def make_pdf(path: Path) -> None:
@@ -201,3 +202,29 @@ def test_rotated_clockify_style_pdf_is_editable(tmp_path: Path) -> None:
     assert model.object_at(0, center(logo.rect)).kind == "image"
     model.replace_text(0, number, "Total: 30:00:00", number.size, number.color, number.font)
     assert "Total: 30:00:00" in model.doc[0].get_text().replace("\xa0", " ")
+
+
+def test_stamp_with_text_date_and_transparent_logo(tmp_path: Path) -> None:
+    QApplication.instance() or QApplication([])
+    source = tmp_path / "stamp-source.pdf"
+    output = tmp_path / "stamp-output.pdf"
+    logo_path = tmp_path / "transparent-logo.png"
+    logo = QImage(100, 100, QImage.Format.Format_ARGB32)
+    logo.fill(QColor(0, 0, 0, 0))
+    assert logo.save(str(logo_path))
+
+    doc = fitz.open()
+    doc.new_page()
+    doc.save(source)
+    doc.close()
+
+    data = render_stamp(StampConfig("Validé par la direction", True, str(logo_path), "#16803c"))
+    assert data.startswith(b"\x89PNG")
+    model = PdfDocument()
+    assert model.open(str(source))
+    model.add_stamp(0, fitz.Rect(100, 100, 420, 196), data)
+    assert any(obj.kind == "image" for obj in model.page_objects(0))
+    model.save(str(output))
+    exported = fitz.open(output)
+    assert exported[0].get_image_info()
+    exported.close()
